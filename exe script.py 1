@@ -1,0 +1,64 @@
+import argparse
+import pefile
+import os
+import logging
+
+# Set up logging to log analysis results to a file
+logging.basicConfig(filename='outputs/analysis_results.txt', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+def analyze_pe(file_path):
+    """Analyzes a PE file, logging the results and printing them to the console."""
+    if os.path.getsize(file_path) == 0:
+        logging.error(f"Error: {file_path} is empty.")
+        print("Error: The file is empty.")
+        return
+    
+    try:
+        pe = pefile.PE(file_path)
+        
+        # Log and print the basic file info
+        logging.info(f"Analyzing file: {file_path}")
+        print(f"File: {file_path}")
+        print(f"Machine: {hex(pe.FILE_HEADER.Machine)}")
+        logging.info(f"Machine: {hex(pe.FILE_HEADER.Machine)}")
+        
+        print(f"Number of Sections: {pe.FILE_HEADER.NumberOfSections}")
+        logging.info(f"Number of Sections: {pe.FILE_HEADER.NumberOfSections}")
+        
+        print(f"Entry Point: {hex(pe.OPTIONAL_HEADER.AddressOfEntryPoint)}")
+        logging.info(f"Entry Point: {hex(pe.OPTIONAL_HEADER.AddressOfEntryPoint)}")
+
+        # Log and print imported DLLs and functions
+        if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
+            print("\nImports:")
+            logging.info("Imports:")
+            for entry in pe.DIRECTORY_ENTRY_IMPORT:
+                dll_name = entry.dll.decode('utf-8')
+                print(f"  DLL: {dll_name}")
+                logging.info(f"  DLL: {dll_name}")
+                for imp in entry.imports:
+                    func_name = imp.name.decode('utf-8') if imp.name else 'Unknown'
+                    print(f"    Function: {func_name}")
+                    logging.info(f"    Function: {func_name}")
+
+    except pefile.PEFormatError as e:
+        logging.error(f"PEFormatError: {e}")
+        print(f"Error: {e}")
+
+# Main entry point with argument parsing
+if __name__ == "__main__":
+    # Argument parser to handle input from command line
+    parser = argparse.ArgumentParser(description="Analyze a PE file.")
+    parser.add_argument("filepath", help="Path to the PE file to be analyzed")
+    
+    # Parse the arguments from command line
+    args = parser.parse_args()
+
+    # Check if the file exists before running analysis
+    if os.path.exists(args.filepath):
+        analyze_pe(args.filepath)
+    else:
+        print(f"Error: File does not exist at {args
+              .filepath}")
+        logging.error(f"File does not exist at {args.filepath}")
